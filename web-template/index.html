@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BALI COCKTAIL" />
+<meta name="theme-color" content="#0b0b0d" />
+<link rel="apple-touch-icon" href="images/ic_launcher.jpg" />
+<title>BALI COCKTAIL</title>
+<style>
+:root{--bg:#0b0b0d;--card:#151519;--line:#2c2b30;--accent:#8e2948;--accent2:#cb8fa0;--text:#fff;--muted:#b9b4b6;--safe-t:env(safe-area-inset-top);--safe-b:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;min-height:100%}body{padding-top:var(--safe-t);padding-bottom:var(--safe-b)}button,input{font:inherit}.app{max-width:760px;margin:auto;min-height:100vh}.header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0b0b0df5 78%,#0b0b0d00);padding:16px 16px 22px}.brand{font-size:28px;font-weight:850;letter-spacing:-.7px}.sub{font-size:13px;color:var(--muted);margin-top:4px}.search{margin-top:14px;width:100%;border:1px solid var(--line);background:var(--card);color:white;border-radius:14px;padding:13px 14px;outline:none}.search:focus{border-color:#6f3a4d}.chips{display:flex;gap:8px;overflow:auto;padding-top:12px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}.chip{border:1px solid var(--line);background:var(--card);color:#fff;padding:8px 14px;border-radius:999px;white-space:nowrap;font-size:13px;font-weight:700}.chip.active{background:var(--accent);border-color:var(--accent)}.list{display:grid;gap:10px;padding:0 16px 24px}.card{display:grid;grid-template-columns:100px 1fr;gap:14px;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:18px;cursor:pointer}.thumb{width:100px;height:100px;object-fit:cover;border-radius:14px;background:#222}.ctitle{font-size:19px;font-weight:800;line-height:1.1}.cat{font-size:11px;font-weight:800;color:var(--accent2);letter-spacing:.7px;margin-top:7px}.taste{font-size:13px;color:var(--muted);line-height:1.35;margin-top:5px}.meta{font-size:12px;color:#ffffff8b;margin-top:6px}.empty{text-align:center;color:var(--muted);padding:50px 20px}.detail{display:none;padding-bottom:28px}.detail.show{display:block}.hero{width:calc(100% - 32px);height:310px;object-fit:cover;margin:12px 16px 0;border-radius:22px;background:#222}.detail-head{padding:18px 16px 4px}.back{appearance:none;border:0;background:#25252a;color:white;border-radius:12px;padding:9px 12px;font-weight:700;margin-bottom:14px}.dtitle{font-size:31px;font-weight:850;letter-spacing:-.7px}.dcat{font-size:12px;font-weight:800;color:var(--accent2);letter-spacing:.9px;margin-top:7px}.dtaste{color:var(--muted);margin-top:8px;line-height:1.4}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:12px 16px}.stat,.block{background:var(--card);border:1px solid var(--line);border-radius:17px}.stat{padding:11px;min-height:72px}.slabel{font-size:10px;color:#ffffff8c;font-weight:800;letter-spacing:.7px}.svalue{font-size:13px;font-weight:700;margin-top:5px;word-break:break-word}.block{margin:0 16px 12px;padding:14px}.btitle{font-size:19px;font-weight:800;margin-bottom:10px}.ice{color:var(--muted);line-height:1.45}.ing{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #ffffff12}.ing:last-child{border:0}.amount{color:var(--muted);white-space:nowrap}.step{display:flex;gap:10px;align-items:flex-start;margin:12px 0;line-height:1.4}.num{flex:0 0 25px;height:25px;border-radius:50%;display:grid;place-items:center;background:var(--accent);font-size:12px;font-weight:800}.err{padding:30px;color:#ffbacd}.loader{padding:50px 16px;text-align:center;color:var(--muted)}
+@media(min-width:650px){.list{grid-template-columns:1fr 1fr}.hero{height:420px}.card{grid-template-columns:92px 1fr}.thumb{width:92px;height:92px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section id="home">
+    <header class="header">
+      <div class="brand">BALI COCKTAIL</div>
+      <div class="sub">Технологические карты, рецептуры и подача</div>
+      <input id="search" class="search" placeholder="Поиск коктейля или ингредиента" autocomplete="off" />
+      <div id="chips" class="chips"></div>
+    </header>
+    <div id="list" class="list"><div class="loader">Загрузка коктейлей…</div></div>
+  </section>
+  <section id="detail" class="detail"></section>
+</div>
+<script>
+const cats=['Все','Авторские','Классика','Заготовки']; let all=[],cat='Все';
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const img=c=>`images/${encodeURIComponent(c.image)}.jpg`;
+function renderChips(){chips.innerHTML=cats.map(x=>`<button class="chip ${x===cat?'active':''}" data-cat="${esc(x)}">${esc(x)}</button>`).join(''); chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;renderChips();renderList()})}
+function matches(c,q){q=q.toLowerCase().trim();if(!q)return true;return c.name.toLowerCase().includes(q)||c.taste.toLowerCase().includes(q)||c.ingredients.some(i=>i.name.toLowerCase().includes(q))}
+function renderList(){const q=search.value;const arr=all.filter(c=>(cat==='Все'||c.category===cat)&&matches(c,q)); list.innerHTML=arr.length?arr.map(c=>`<article class="card" data-id="${esc(c.id)}"><img class="thumb" src="${img(c)}" alt="${esc(c.name)}"><div><div class="ctitle">${esc(c.name)}</div><div class="cat">${esc(c.category.toUpperCase())}</div><div class="taste">${esc(c.taste)}</div><div class="meta">${esc(c.method)} · ${esc(c.yield)}</div></div></article>`).join(''):'<div class="empty">Ничего не найдено</div>'; list.querySelectorAll('.card').forEach(x=>x.onclick=()=>openDetail(x.dataset.id))}
+function openDetail(id){const c=all.find(x=>x.id===id);if(!c)return;home.style.display='none';detail.classList.add('show');detail.innerHTML=`<img class="hero" src="${img(c)}" alt="${esc(c.name)}"><div class="detail-head"><button class="back" id="back">‹ Все коктейли</button><div class="dtitle">${esc(c.name)}</div><div class="dcat">${esc(c.category.toUpperCase())}</div><div class="dtaste">${esc(c.taste)}</div></div><div class="stats"><div class="stat"><div class="slabel">ВЫХОД</div><div class="svalue">${esc(c.yield)}</div></div><div class="stat"><div class="slabel">МЕТОД</div><div class="svalue">${esc(c.method)}</div></div><div class="stat"><div class="slabel">БОКАЛ</div><div class="svalue">${esc(c.glass)}</div></div></div><div class="block"><div class="btitle">Лёд</div><div class="ice">${esc(c.ice)}</div></div><div class="block"><div class="btitle">Ингредиенты</div>${c.ingredients.map(i=>`<div class="ing"><span>${esc(i.name)}</span><span class="amount">${i.amount==null?'—':esc(i.amount)} ${esc(i.unit)}</span></div>`).join('')}</div><div class="block"><div class="btitle">Приготовление</div>${c.steps.map((s,i)=>`<div class="step"><span class="num">${i+1}</span><span>${esc(s)}</span></div>`).join('')}</div>`;document.getElementById('back').onclick=goHome;history.pushState({id},'',`#${id}`);scrollTo(0,0)}
+function goHome(){detail.classList.remove('show');detail.innerHTML='';home.style.display='block';if(location.hash)history.pushState({},'',location.pathname+location.search);scrollTo(0,0)}
+search.addEventListener('input',renderList);window.addEventListener('popstate',()=>{const id=location.hash.slice(1);if(id){const c=all.find(x=>x.id===id);if(c){home.style.display='none';openDetailNoPush(c)}}else goHomeNoPush()});
+function openDetailNoPush(c){home.style.display='none';detail.classList.add('show');const oldPush=history.pushState;history.pushState=()=>{};openDetail(c.id);history.pushState=oldPush}
+function goHomeNoPush(){detail.classList.remove('show');detail.innerHTML='';home.style.display='block'}
+fetch('cocktails.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{all=d;renderChips();renderList();const id=location.hash.slice(1);if(id&&all.some(x=>x.id===id))openDetailNoPush(all.find(x=>x.id===id))}).catch(e=>list.innerHTML='<div class="err">Не удалось загрузить каталог. Проверьте подключение к интернету.</div>');
+if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+</script>
+</body>
+</html>
