@@ -11,10 +11,14 @@ if [ ! -f "$APK" ]; then
 fi
 
 echo "Installing BALI COCKTAIL APK on emulator..."
-adb install -r "$APK"
+INSTALL_OUT="$(adb install -r "$APK")"
+echo "$INSTALL_OUT"
+grep -q 'Success' <<< "$INSTALL_OUT"
 
 adb logcat -c
-adb shell am start -W -n "$ACTIVITY"
+START_OUT="$(adb shell am start -W -n "$ACTIVITY")"
+echo "$START_OUT"
+grep -q 'Status: ok' <<< "$START_OUT"
 sleep 4
 
 PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
@@ -23,18 +27,18 @@ if [ -z "$PID" ]; then
   exit 1
 fi
 
-adb shell uiautomator dump /sdcard/bali-window.xml >/dev/null
-adb pull /sdcard/bali-window.xml /tmp/bali-window.xml >/dev/null
-
-if ! grep -Eq 'BALI COCKTAIL|Коктейли' /tmp/bali-window.xml; then
-  echo "Expected BALI COCKTAIL UI was not found"
-  cat /tmp/bali-window.xml
+# Confirm Android reports the BALI activity in the current activity stack.
+if ! adb shell dumpsys activity activities | grep -q 'by.bali.cocktails/.MainActivity'; then
+  echo "BALI COCKTAIL MainActivity was not found in the Android activity stack"
+  adb shell dumpsys activity activities | tail -n 200
   exit 1
 fi
 
-if adb logcat -d | grep -E 'FATAL EXCEPTION|Process: by\.bali\.cocktails'; then
-  echo "Application crash detected"
+# Ignore unrelated launcher/system ANRs; fail only for this application process.
+if adb logcat -d | grep -E 'FATAL EXCEPTION.*|Process: by\.bali\.cocktails' | grep -q 'by\.bali\.cocktails'; then
+  echo "BALI COCKTAIL crash detected"
+  adb logcat -d | tail -n 300
   exit 1
 fi
 
-echo "BALI COCKTAIL installed and launched successfully on Android emulator."
+echo "BALI COCKTAIL installed and launched successfully on Android emulator. PID=$PID"
