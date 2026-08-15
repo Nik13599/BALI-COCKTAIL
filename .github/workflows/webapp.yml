@@ -1,0 +1,52 @@
+name: Publish BALI COCKTAIL Web App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate application assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
+          chmod +x /tmp/bootstrap.sh
+          /tmp/bootstrap.sh generated
+
+      - name: Prepare static iPhone app
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/bali-site
+          mkdir -p /tmp/bali-site/images
+          cp web-template/index.html /tmp/bali-site/index.html
+          cp web-template/sw.js /tmp/bali-site/sw.js
+          cp web-template/manifest.webmanifest /tmp/bali-site/manifest.webmanifest
+          cp generated/android/app/src/main/assets/cocktails.json /tmp/bali-site/cocktails.json
+          cp generated/android/app/src/main/res/drawable/cocktail_*.jpg /tmp/bali-site/images/
+          cp generated/android/app/src/main/res/drawable/ic_launcher.jpg /tmp/bali-site/images/ic_launcher.jpg
+          touch /tmp/bali-site/.nojekyll
+
+      - name: Publish webapp branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan webapp
+          git rm -rf .
+          cp -R /tmp/bali-site/. .
+          git add -A
+          git commit -m "Publish BALI COCKTAIL mobile web app"
+          git push --force origin webapp
