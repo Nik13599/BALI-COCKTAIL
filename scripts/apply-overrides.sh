@@ -7,7 +7,11 @@ IOS="$ROOT/ios"
 
 if [ -d "$ANDROID" ]; then
   cp overrides/android/MainActivity.kt "$ANDROID/app/src/main/java/by/bali/cocktails/MainActivity.kt"
+  cp overrides/android/AndroidManifest.xml "$ANDROID/app/src/main/AndroidManifest.xml"
+  # Remove every bundled cocktail illustration/photo. Keep only the application icon.
   rm -f "$ANDROID/app/src/main/res/drawable"/cocktail_*.jpg
+  rm -f "$ANDROID/app/src/main/res/drawable"/classic_*.jpg
+  rm -f "$ANDROID/app/src/main/res/drawable"/tiki_*.jpg
 fi
 
 if [ -d "$IOS" ]; then
