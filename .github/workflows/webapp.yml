@@ -34,8 +34,7 @@ jobs:
           cp web-template/sw.js /tmp/bali-site/sw.js
           cp web-template/manifest.webmanifest /tmp/bali-site/manifest.webmanifest
           cp generated/android/app/src/main/assets/cocktails.json /tmp/bali-site/cocktails.json
-          cp generated/android/app/src/main/res/drawable/cocktail_*.jpg /tmp/bali-site/images/
-          cp generated/android/app/src/main/res/drawable/ic_launcher.jpg /tmp/bali-site/images/ic_launcher.jpg
+          cp generated/android/app/src/main/res/drawable/*.jpg /tmp/bali-site/images/
           touch /tmp/bali-site/.nojekyll
 
       - name: Publish webapp branch
