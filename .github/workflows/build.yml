@@ -37,6 +37,7 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Keep a stable Android signing key
+        id: android-signing-cache
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
@@ -50,6 +51,13 @@ jobs:
       - name: Build APK
         shell: bash
         run: gradle -p generated/android :app:assembleDebug --stacktrace
+
+      - name: Save Android signing key before device test
+        if: steps.android-signing-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: bali-cocktail-debug-keystore-v1
 
       - name: Verify APK contents
         shell: bash
@@ -81,7 +89,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -euo pipefail
+            set -eu
             APK=generated/android/app/build/outputs/apk/debug/app-debug.apk
             adb install -r "$APK"
             adb logcat -c
