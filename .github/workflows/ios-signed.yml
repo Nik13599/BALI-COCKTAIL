@@ -37,20 +37,8 @@ jobs:
           cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
           chmod +x /tmp/bootstrap.sh
           /tmp/bootstrap.sh generated
-
-      - name: Fix iOS source
-        if: steps.signing.outputs.ready == 'true'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('generated/ios/BALI_COCKTAIL/DetailView.swift')
-          s = p.read_text()
-          s = s.replace('InfoBlock(title: "Лёд", body: cocktail.ice)', 'InfoBlock(title: "Лёд", text: cocktail.ice)')
-          s = s.replace('let body: String', 'let text: String')
-          s = s.replace('Text(body)', 'Text(text)')
-          p.write_text(s)
-          PY
+          chmod +x scripts/apply-overrides.sh
+          scripts/apply-overrides.sh generated
 
       - name: Prepare assets
         if: steps.signing.outputs.ready == 'true'
@@ -59,16 +47,9 @@ jobs:
           set -euo pipefail
           IOS_DIR="generated/ios/BALI_COCKTAIL"
           ASSETS="$IOS_DIR/Assets.xcassets"
+          rm -rf "$ASSETS"/cocktail_*.imageset
           mkdir -p "$ASSETS/AppIcon.appiconset"
           printf '%s\n' '{"info":{"author":"xcode","version":1}}' > "$ASSETS/Contents.json"
-          for f in generated/android/app/src/main/res/drawable/*.jpg; do
-            base="$(basename "$f" .jpg)"
-            [ "$base" = "ic_launcher" ] && continue
-            dir="$ASSETS/$base.imageset"
-            mkdir -p "$dir"
-            cp "$f" "$dir/$base.jpg"
-            printf '%s\n' "{\"images\":[{\"idiom\":\"universal\",\"filename\":\"$base.jpg\",\"scale\":\"1x\"}],\"info\":{\"author\":\"xcode\",\"version\":1}}" > "$dir/Contents.json"
-          done
           cp generated/android/app/src/main/assets/cocktails.json "$IOS_DIR/cocktails.json"
           sips -s format png -z 1024 1024 generated/android/app/src/main/res/drawable/ic_launcher.jpg --out "$ASSETS/AppIcon.appiconset/appicon-1024.png" >/dev/null
           sips -z 120 120 "$ASSETS/AppIcon.appiconset/appicon-1024.png" --out "$ASSETS/AppIcon.appiconset/appicon-120.png" >/dev/null
@@ -94,24 +75,20 @@ jobs:
           PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
           KEYCHAIN_PATH="$RUNNER_TEMP/bali-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
-
           printf '%s' "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
           printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
-
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security import "$CERT_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
           security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
           UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
           TEAM_ID=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
-
           IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | sed -n 's/.*"\(.*\)"/\1/p' | head -n 1)
           test -n "$IDENTITY"
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
@@ -143,7 +120,6 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY_NAME"
-
           APP="generated/ios/BALI-COCKTAIL.xcarchive/Products/Applications/BALI COCKTAIL.app"
           test -d "$APP"
           mkdir -p out/Payload
