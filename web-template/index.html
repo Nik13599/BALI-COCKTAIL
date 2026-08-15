@@ -31,7 +31,18 @@
 <script>
 const cats=['Все','Авторские','Классика','Заготовки']; let all=[],cat='Все';
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const img=c=>`images/${encodeURIComponent(c.image)}.jpg`;
+function hashId(s){let h=0;for(const ch of s){h=((h<<5)-h)+ch.charCodeAt(0);h|=0}return Math.abs(h)}
+function img(c){
+  if(c.category==='Авторские'){const t=['tiki_a','tiki_b','tiki_c'];return `images/${t[hashId(c.id)%t.length]}.jpg`}
+  const n=c.name.toLowerCase();
+  if(c.category==='Заготовки'){if(/гранат|малина|клюква/.test(n))return 'images/classic_red.jpg';if(/грейпфрут|фаербол/.test(n))return 'images/classic_orange.jpg';return 'images/classic_green.jpg'}
+  if(/мохито|базил/.test(n))return 'images/classic_green.jpg';
+  if(/апероль|беллини|френч|маргарит|порнстар/.test(n))return 'images/classic_orange.jpg';
+  if(/эспрессо|негрони|олд|бульвардье|годфазер|манхэттен|б-52/.test(n))return 'images/classic_dark.jpg';
+  if(/пина|белый русский/.test(n))return 'images/classic_creamy.jpg';
+  if(/кровавая|космополитен|клевер/.test(n))return 'images/classic_red.jpg';
+  return 'images/classic_clear.jpg';
+}
 function renderChips(){chips.innerHTML=cats.map(x=>`<button class="chip ${x===cat?'active':''}" data-cat="${esc(x)}">${esc(x)}</button>`).join(''); chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;renderChips();renderList()})}
 function matches(c,q){q=q.toLowerCase().trim();if(!q)return true;return c.name.toLowerCase().includes(q)||c.taste.toLowerCase().includes(q)||c.ingredients.some(i=>i.name.toLowerCase().includes(q))}
 function renderList(){const q=search.value;const arr=all.filter(c=>(cat==='Все'||c.category===cat)&&matches(c,q)); list.innerHTML=arr.length?arr.map(c=>`<article class="card" data-id="${esc(c.id)}"><img class="thumb" src="${img(c)}" alt="${esc(c.name)}"><div><div class="ctitle">${esc(c.name)}</div><div class="cat">${esc(c.category.toUpperCase())}</div><div class="taste">${esc(c.taste)}</div><div class="meta">${esc(c.method)} · ${esc(c.yield)}</div></div></article>`).join(''):'<div class="empty">Ничего не найдено</div>'; list.querySelectorAll('.card').forEach(x=>x.onclick=()=>openDetail(x.dataset.id))}
