@@ -1,0 +1,132 @@
+name: Build BALI COCKTAIL
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate application sources
+        shell: bash
+        run: |
+          cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
+          chmod +x /tmp/bootstrap.sh
+          /tmp/bootstrap.sh generated
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 36
+        shell: bash
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 9.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Build APK
+        shell: bash
+        run: gradle -p generated/android :app:assembleDebug --stacktrace
+
+      - name: Prepare Android installer
+        shell: bash
+        run: |
+          mkdir -p out/android
+          cp generated/android/app/build/outputs/apk/debug/app-debug.apk out/android/BALI-COCKTAIL.apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BALI-COCKTAIL-Android-APK
+          path: out/android/BALI-COCKTAIL.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  ios-unsigned:
+    name: iOS unsigned build
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate application sources
+        shell: bash
+        run: |
+          cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
+          chmod +x /tmp/bootstrap.sh
+          /tmp/bootstrap.sh generated
+
+      - name: Prepare iOS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          IOS_DIR="generated/ios/BALI_COCKTAIL"
+          ASSETS="$IOS_DIR/Assets.xcassets"
+          mkdir -p "$ASSETS/AppIcon.appiconset"
+          printf '%s\n' '{"info":{"author":"xcode","version":1}}' > "$ASSETS/Contents.json"
+
+          for f in generated/android/app/src/main/res/drawable/*.jpg; do
+            base="$(basename "$f" .jpg)"
+            if [ "$base" = "ic_launcher" ]; then
+              continue
+            fi
+            dir="$ASSETS/$base.imageset"
+            mkdir -p "$dir"
+            cp "$f" "$dir/$base.jpg"
+            printf '%s\n' "{\"images\":[{\"idiom\":\"universal\",\"filename\":\"$base.jpg\",\"scale\":\"1x\"}],\"info\":{\"author\":\"xcode\",\"version\":1}}" > "$dir/Contents.json"
+          done
+
+          cp generated/android/app/src/main/assets/cocktails.json "$IOS_DIR/cocktails.json"
+          sips -s format png -z 1024 1024 generated/android/app/src/main/res/drawable/ic_launcher.jpg --out "$ASSETS/AppIcon.appiconset/appicon.png" >/dev/null
+          printf '%s\n' '{"images":[{"filename":"appicon.png","idiom":"ios-marketing","scale":"1x","size":"1024x1024"},{"filename":"appicon.png","idiom":"iphone","scale":"2x","size":"60x60"},{"filename":"appicon.png","idiom":"iphone","scale":"3x","size":"60x60"}],"info":{"author":"xcode","version":1}}' > "$ASSETS/AppIcon.appiconset/Contents.json"
+
+      - name: Install XcodeGen
+        shell: bash
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        shell: bash
+        run: |
+          cd generated/ios
+          xcodegen generate
+
+      - name: Build iOS Simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project generated/ios/BALI_COCKTAIL.xcodeproj \
+            -scheme BALI_COCKTAIL \
+            -sdk iphonesimulator \
+            -configuration Release \
+            -derivedDataPath generated/ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          APP="$(find generated/ios/build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          mkdir -p out/ios
+          ditto -c -k --sequesterRsrc --keepParent "$APP" out/ios/BALI-COCKTAIL-iOS-Simulator.app.zip
+
+      - name: Upload unsigned iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: BALI-COCKTAIL-iOS-Unsigned
+          path: out/ios/BALI-COCKTAIL-iOS-Simulator.app.zip
+          if-no-files-found: error
+          retention-days: 30
