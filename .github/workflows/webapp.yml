@@ -23,6 +23,8 @@ jobs:
           cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
           chmod +x /tmp/bootstrap.sh
           /tmp/bootstrap.sh generated
+          chmod +x scripts/apply-overrides.sh
+          scripts/apply-overrides.sh generated
 
       - name: Prepare static iPhone app
         shell: bash
@@ -34,7 +36,7 @@ jobs:
           cp web-template/sw.js /tmp/bali-site/sw.js
           cp web-template/manifest.webmanifest /tmp/bali-site/manifest.webmanifest
           cp generated/android/app/src/main/assets/cocktails.json /tmp/bali-site/cocktails.json
-          cp generated/android/app/src/main/res/drawable/*.jpg /tmp/bali-site/images/
+          cp generated/android/app/src/main/res/drawable/ic_launcher.jpg /tmp/bali-site/images/ic_launcher.jpg
           touch /tmp/bali-site/.nojekyll
 
       - name: Publish webapp branch
