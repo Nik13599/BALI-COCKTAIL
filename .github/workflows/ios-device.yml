@@ -1,0 +1,103 @@
+name: Build BALI COCKTAIL iPhone package
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ios-device-unsigned:
+    name: iPhone unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate application sources
+        shell: bash
+        run: |
+          cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
+          chmod +x /tmp/bootstrap.sh
+          /tmp/bootstrap.sh generated
+
+      - name: Fix iOS source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('generated/ios/BALI_COCKTAIL/DetailView.swift')
+          s = p.read_text()
+          s = s.replace('InfoBlock(title: "Лёд", body: cocktail.ice)', 'InfoBlock(title: "Лёд", text: cocktail.ice)')
+          s = s.replace('let body: String', 'let text: String')
+          s = s.replace('Text(body)', 'Text(text)')
+          p.write_text(s)
+          PY
+
+      - name: Prepare iOS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          IOS_DIR="generated/ios/BALI_COCKTAIL"
+          ASSETS="$IOS_DIR/Assets.xcassets"
+          mkdir -p "$ASSETS/AppIcon.appiconset"
+          printf '%s\n' '{"info":{"author":"xcode","version":1}}' > "$ASSETS/Contents.json"
+          for f in generated/android/app/src/main/res/drawable/*.jpg; do
+            base="$(basename "$f" .jpg)"
+            [ "$base" = "ic_launcher" ] && continue
+            dir="$ASSETS/$base.imageset"
+            mkdir -p "$dir"
+            cp "$f" "$dir/$base.jpg"
+            printf '%s\n' "{\"images\":[{\"idiom\":\"universal\",\"filename\":\"$base.jpg\",\"scale\":\"1x\"}],\"info\":{\"author\":\"xcode\",\"version\":1}}" > "$dir/Contents.json"
+          done
+          cp generated/android/app/src/main/assets/cocktails.json "$IOS_DIR/cocktails.json"
+          sips -s format png -z 1024 1024 generated/android/app/src/main/res/drawable/ic_launcher.jpg --out "$ASSETS/AppIcon.appiconset/appicon-1024.png" >/dev/null
+          sips -z 120 120 "$ASSETS/AppIcon.appiconset/appicon-1024.png" --out "$ASSETS/AppIcon.appiconset/appicon-120.png" >/dev/null
+          sips -z 180 180 "$ASSETS/AppIcon.appiconset/appicon-1024.png" --out "$ASSETS/AppIcon.appiconset/appicon-180.png" >/dev/null
+          sips -z 152 152 "$ASSETS/AppIcon.appiconset/appicon-1024.png" --out "$ASSETS/AppIcon.appiconset/appicon-152.png" >/dev/null
+          sips -z 167 167 "$ASSETS/AppIcon.appiconset/appicon-1024.png" --out "$ASSETS/AppIcon.appiconset/appicon-167.png" >/dev/null
+          cat > "$ASSETS/AppIcon.appiconset/Contents.json" <<'JSON'
+          {"images":[
+            {"filename":"appicon-120.png","idiom":"iphone","scale":"2x","size":"60x60"},
+            {"filename":"appicon-180.png","idiom":"iphone","scale":"3x","size":"60x60"},
+            {"filename":"appicon-152.png","idiom":"ipad","scale":"2x","size":"76x76"},
+            {"filename":"appicon-167.png","idiom":"ipad","scale":"2x","size":"83.5x83.5"},
+            {"filename":"appicon-1024.png","idiom":"ios-marketing","scale":"1x","size":"1024x1024"}
+          ],"info":{"author":"xcode","version":1}}
+          JSON
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          cd generated/ios
+          xcodegen generate
+
+      - name: Build unsigned iPhone app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project generated/ios/BALI_COCKTAIL.xcodeproj \
+            -scheme BALI_COCKTAIL \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath generated/ios/device-build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+          APP="$(find generated/ios/device-build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          mkdir -p out/Payload
+          cp -R "$APP" out/Payload/
+          cd out
+          zip -qry BALI-COCKTAIL-unsigned.ipa Payload
+
+      - name: Upload unsigned iPhone IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: BALI-COCKTAIL-iPhone-Unsigned-IPA
+          path: out/BALI-COCKTAIL-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
