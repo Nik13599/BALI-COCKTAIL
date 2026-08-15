@@ -47,6 +47,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan webapp
           git rm -rf .
+          git clean -fdx
           cp -R /tmp/bali-site/. .
           git add -A
           git commit -m "Publish BALI COCKTAIL mobile web app"
