@@ -20,6 +20,8 @@ jobs:
           cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
           chmod +x /tmp/bootstrap.sh
           /tmp/bootstrap.sh generated
+          chmod +x scripts/apply-overrides.sh
+          scripts/apply-overrides.sh generated
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -71,19 +73,8 @@ jobs:
           cat scripts/bootstrap.part.* > /tmp/bootstrap.sh
           chmod +x /tmp/bootstrap.sh
           /tmp/bootstrap.sh generated
-
-      - name: Fix iOS source for SwiftUI
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('generated/ios/BALI_COCKTAIL/DetailView.swift')
-          s = p.read_text()
-          s = s.replace('InfoBlock(title: "Лёд", body: cocktail.ice)', 'InfoBlock(title: "Лёд", text: cocktail.ice)')
-          s = s.replace('let body: String', 'let text: String')
-          s = s.replace('Text(body)', 'Text(text)')
-          p.write_text(s)
-          PY
+          chmod +x scripts/apply-overrides.sh
+          scripts/apply-overrides.sh generated
 
       - name: Prepare iOS assets
         shell: bash
@@ -91,20 +82,9 @@ jobs:
           set -euo pipefail
           IOS_DIR="generated/ios/BALI_COCKTAIL"
           ASSETS="$IOS_DIR/Assets.xcassets"
+          rm -rf "$ASSETS"/cocktail_*.imageset
           mkdir -p "$ASSETS/AppIcon.appiconset"
           printf '%s\n' '{"info":{"author":"xcode","version":1}}' > "$ASSETS/Contents.json"
-
-          for f in generated/android/app/src/main/res/drawable/*.jpg; do
-            base="$(basename "$f" .jpg)"
-            if [ "$base" = "ic_launcher" ]; then
-              continue
-            fi
-            dir="$ASSETS/$base.imageset"
-            mkdir -p "$dir"
-            cp "$f" "$dir/$base.jpg"
-            printf '%s\n' "{\"images\":[{\"idiom\":\"universal\",\"filename\":\"$base.jpg\",\"scale\":\"1x\"}],\"info\":{\"author\":\"xcode\",\"version\":1}}" > "$dir/Contents.json"
-          done
-
           cp generated/android/app/src/main/assets/cocktails.json "$IOS_DIR/cocktails.json"
           sips -s format png -z 1024 1024 generated/android/app/src/main/res/drawable/ic_launcher.jpg --out "$ASSETS/AppIcon.appiconset/appicon-1024.png" >/dev/null
           sips -z 120 120 "$ASSETS/AppIcon.appiconset/appicon-1024.png" --out "$ASSETS/AppIcon.appiconset/appicon-120.png" >/dev/null
@@ -122,11 +102,9 @@ jobs:
           JSON
 
       - name: Install XcodeGen
-        shell: bash
         run: brew install xcodegen
 
       - name: Generate Xcode project
-        shell: bash
         run: |
           cd generated/ios
           xcodegen generate
