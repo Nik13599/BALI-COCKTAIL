@@ -1,0 +1,32 @@
+name: Verify iPhone web host
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/verify-web-host.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test HTML hosts
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA=daee5b9e6044e0d8c517cd3a110ccf4b94de3cd4
+          urls=(
+            "https://raw.githack.com/Nik13599/BALI-COCKTAIL/$SHA/index.html"
+            "https://cdn.statically.io/gh/Nik13599/BALI-COCKTAIL@$SHA/index.html"
+            "https://cdn.jsdelivr.net/gh/Nik13599/BALI-COCKTAIL@$SHA/index.html"
+            "https://raw.githubusercontent.com/Nik13599/BALI-COCKTAIL/$SHA/index.html"
+          )
+          for url in "${urls[@]}"; do
+            echo "===== $url ====="
+            rm -f /tmp/h /tmp/b
+            code=$(curl --connect-timeout 15 --max-time 30 -sS -L -D /tmp/h -o /tmp/b -w '%{http_code}' "$url" || true)
+            echo "HTTP=$code"
+            grep -i '^content-type:' /tmp/h | tail -1 || true
+            grep -i '^content-length:' /tmp/h | tail -1 || true
+            echo -n 'BODY='; head -c 100 /tmp/b | tr '\n' ' '; echo
+          done
